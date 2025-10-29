@@ -1,41 +1,41 @@
-الاسم : RDP
+name: RDP
 
-على :
-  workflow_dispatch :
+on:
+  workflow_dispatch:
 
-الوظائف :
-  آمن - RDP :
-    يعمل على : ويندوز - الأحدث​
-    مهلة زمنية - دقائق : 3600 
+jobs:
+  secure-rdp:
+    runs-on: windows-latest
+    timeout-minutes: 3600
 
-    الخطوات :
-      - الاسم : تكوين إعدادات Core RDP  
-        تشغيل : | 
-          # تمكين سطح المكتب البعيد وتعطيل مصادقة مستوى الشبكة (إذا لزم الأمر)
-          مجموعة - ItemProperty - المسار 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `   
-                             -الاسم "fDenyTSConnections" -القيمة 0 -القوة
+    steps:
+      - name: Configure Core RDP Settings
+        run: |
+          # Enable Remote Desktop and disable Network Level Authentication (if needed)
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
+                             -Name "fDenyTSConnections" -Value 0 -Force
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
-                             - الاسم "UserAuthentication" - القيمة 0 - فرض    
-          مجموعة - خاصية العنصر - المسار 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `   
-                             -الاسم "SecurityLayer" -القيمة 0 -القوة
+                             -Name "UserAuthentication" -Value 0 -Force
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
+                             -Name "SecurityLayer" -Value 0 -Force
 
-          # قم بإزالة أي قاعدة موجودة بنفس الاسم لتجنب التكرار
-          netsh advfirewall firewall حذف القاعدة name="RDP-Tailscale"
+          # Remove any existing rule with the same name to avoid duplication
+          netsh advfirewall firewall delete rule name="RDP-Tailscale"
           
-          # للاختبار، اسمح بأي اتصال وارد على المنفذ 3389
+          # For testing, allow any incoming connection on port 3389
           netsh advfirewall firewall add rule name="RDP-Tailscale" `
-            dir = في العمل = السماح للبروتوكول = TCP localport = 3389
+            dir=in action=allow protocol=TCP localport=3389
 
-          # (اختياري) أعد تشغيل خدمة سطح المكتب البعيد للتأكد من سريان التغييرات
-          إعادة التشغيل - الخدمة - اسم TermService - فرض   
+          # (Optional) Restart the Remote Desktop service to ensure changes take effect
+          Restart-Service -Name TermService -Force
 
-      - الاسم : إنشاء مستخدم RDP بكلمة مرور آمنة    
-        تشغيل : | 
-          إضافة - النوع - اسم التجميع النظام . الأمان  
-          $charSet = @{ 
-              Upper = [ char []]( 65. . 90 ) # AZ          
-              Lower = [ char []]( 97. . 122 ) # az         
-              الرقم = [ char []]( 48. . 57 ) # 0-9         
+      - name: Create RDP User with Secure Password
+        run: |
+          Add-Type -AssemblyName System.Security
+          $charSet = @{
+              Upper   = [char[]](65..90)      # A-Z
+              Lower   = [char[]](97..122)     # a-z
+              Number  = [char[]](48..57)      # 0-9
               Special = ([char[]](33..47) + [char[]](58..64) +
                          [char[]](91..96) + [char[]](123..126)) # Special characters
           }
